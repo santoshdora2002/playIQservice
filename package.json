@@ -1,0 +1,20 @@
+{
+  "name": "messages-api",
+  "version": "1.0.0",
+  "description": "A public Express REST API for storing and retrieving the latest message by phone number.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.4"
+  }
+}
