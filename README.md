@@ -16,6 +16,19 @@ npm start
 
 The API listens on `http://localhost:3000` by default. Set the `PORT` environment variable to use a different port.
 
+## Deploy to Vercel
+
+The project includes a root `index.js` serverless entry point and `vercel.json` routing configuration. In Vercel, import the `playIQservice` repository, select the `feature/messages-api` branch, and leave **Root Directory** set to the repository root (`.`). Vercel should detect the Node.js function from the included configuration.
+
+After deployment, use the deployment URL in place of `http://localhost:3000`, for example:
+
+```text
+https://your-deployment.vercel.app/messages
+https://your-deployment.vercel.app/messages?phoneNumber=333451234567
+```
+
+The message store is in memory and is not durable. Vercel may run requests in different or newly started function instances, so messages are not guaranteed to be available across requests or deployments. Use a persistent database if deployed message storage must be reliable.
+
 For development with automatic restarts:
 
 ```bash

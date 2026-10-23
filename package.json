@@ -2,7 +2,7 @@
   "name": "messages-api",
   "version": "1.0.0",
   "description": "A public Express REST API for storing and retrieving the latest message by phone number.",
-  "main": "src/server.js",
+  "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
