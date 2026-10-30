@@ -1,8 +1,19 @@
 const assert = require('node:assert/strict');
 const { beforeEach, describe, test } = require('node:test');
+
+process.env.BASIC_AUTH_USERNAME = 'test-user';
+process.env.BASIC_AUTH_PASSWORD = 'test-password';
+
 const request = require('supertest');
 const app = require('../src/app');
 const messagesStore = require('../src/stores/messagesStore');
+
+function apiRequest(method, path) {
+  return request(app)[method](path).auth(
+    process.env.BASIC_AUTH_USERNAME,
+    process.env.BASIC_AUTH_PASSWORD,
+  );
+}
 
 function formatFriendlyTimestamp(timestamp) {
   return new Intl.DateTimeFormat('en-US', {
@@ -21,9 +32,41 @@ describe('messages API', () => {
     messagesStore.clear();
   });
 
+  test('requires valid Basic Auth credentials for all routes', async () => {
+    const missingCredentials = await request(app).get('/messages');
+    const unauthenticatedPage = await request(app).get('/getOTP');
+    const wrongCredentials = await request(app)
+      .get('/messages')
+      .auth('test-user', 'wrong-password');
+
+    assert.equal(missingCredentials.status, 401);
+    assert.equal(unauthenticatedPage.status, 401);
+    assert.equal(
+      missingCredentials.headers['www-authenticate'],
+      'Basic realm="Messages API", charset="UTF-8"',
+    );
+    assert.deepEqual(missingCredentials.body, {
+      error: 'Authentication required',
+    });
+    assert.equal(wrongCredentials.status, 401);
+    assert.deepEqual(wrongCredentials.body, {
+      error: 'Authentication required',
+    });
+  });
+
+  test('serves the OTP lookup page with valid credentials', async () => {
+    const response = await apiRequest('get', '/getOTP');
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers['content-type'], /text\/html/);
+    assert.match(response.text, /Enter mobile number/);
+    assert.match(response.text, /Get OTP/);
+    assert.match(response.text, /copy-button/);
+    assert.equal(response.headers['cache-control'], 'no-store');
+  });
+
   test('creates a message with a server-generated timestamp', async () => {
-    const response = await request(app)
-      .post('/messages')
+    const response = await apiRequest('post', '/messages')
       .send({ phoneNumber: '+15551234567', message: 'Hello there' });
 
     assert.equal(response.status, 201);
@@ -46,7 +89,7 @@ describe('messages API', () => {
 
   for (const [body] of invalidBodies) {
     test(`rejects invalid message input: ${JSON.stringify(body)}`, async () => {
-      const response = await request(app).post('/messages').send(body);
+      const response = await apiRequest('post', '/messages').send(body);
 
       assert.equal(response.status, 400);
       assert.equal(response.body.error, 'Validation failed');
@@ -54,14 +97,12 @@ describe('messages API', () => {
   }
 
   test('returns the latest message for a phone number', async () => {
-    await request(app)
-      .post('/messages')
+    await apiRequest('post', '/messages')
       .send({ phoneNumber: '+15551234567', message: 'First' });
-    const created = await request(app)
-      .post('/messages')
+    const created = await apiRequest('post', '/messages')
       .send({ phoneNumber: '+15551234567', message: 'Latest' });
 
-    const response = await request(app).get('/messages/%2B15551234567');
+    const response = await apiRequest('get', '/messages/%2B15551234567');
 
     assert.equal(response.status, 200);
     assert.equal(response.body.latestMessage, 'Latest');
@@ -72,11 +113,11 @@ describe('messages API', () => {
   });
 
   test('looks up the latest message without the +1 country code in the query', async () => {
-    const created = await request(app)
-      .post('/messages')
+    const created = await apiRequest('post', '/messages')
       .send({ phoneNumber: '+1333451234567', message: 'Hello hi' });
 
-    const response = await request(app).get(
+    const response = await apiRequest(
+      'get',
       '/messages?phoneNumber=333451234567',
     );
 
@@ -89,14 +130,12 @@ describe('messages API', () => {
   });
 
   test('returns all stored messages', async () => {
-    const first = await request(app)
-      .post('/messages')
+    const first = await apiRequest('post', '/messages')
       .send({ phoneNumber: '+15551234567', message: 'First' });
-    const second = await request(app)
-      .post('/messages')
+    const second = await apiRequest('post', '/messages')
       .send({ phoneNumber: '+15557654321', message: 'Second' });
 
-    const response = await request(app).get('/messages');
+    const response = await apiRequest('get', '/messages');
 
     assert.equal(response.status, 200);
     assert.equal(response.body.messages.length, 2);
@@ -122,14 +161,14 @@ describe('messages API', () => {
   });
 
   test('returns an empty array when no messages are stored', async () => {
-    const response = await request(app).get('/messages');
+    const response = await apiRequest('get', '/messages');
 
     assert.equal(response.status, 200);
     assert.deepEqual(response.body, { messages: [] });
   });
 
   test('returns JSON 404 when the phone number has no messages', async () => {
-    const response = await request(app).get('/messages/unknown');
+    const response = await apiRequest('get', '/messages/unknown');
 
     assert.equal(response.status, 404);
     assert.deepEqual(response.body, {
@@ -138,11 +177,10 @@ describe('messages API', () => {
   });
 
   test('returns JSON errors for malformed JSON and unknown routes', async () => {
-    const malformedJson = await request(app)
-      .post('/messages')
+    const malformedJson = await apiRequest('post', '/messages')
       .set('Content-Type', 'application/json')
       .send('{"phoneNumber":');
-    const unknownRoute = await request(app).get('/unknown');
+    const unknownRoute = await apiRequest('get', '/unknown');
 
     assert.equal(malformedJson.status, 400);
     assert.equal(

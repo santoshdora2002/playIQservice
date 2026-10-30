@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f7f5">
+    <title>Get OTP | PlayIQService</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #1d2926;
+        background: #f5f7f5;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        padding: 48px 20px;
+      }
+
+      main {
+        width: min(100%, 720px);
+        margin: 0 auto;
+      }
+
+      .topbar,
+      .inbox-heading,
+      .message-heading,
+      .code-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .topbar {
+        margin-bottom: 36px;
+      }
+
+      .brand {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 750;
+        letter-spacing: -0.02em;
+      }
+
+      .brand-mark {
+        display: inline-grid;
+        width: 30px;
+        height: 30px;
+        margin-right: 9px;
+        place-items: center;
+        border-radius: 9px;
+        background: #dff3ea;
+        color: #087c62;
+        vertical-align: middle;
+      }
+
+      .topbar-note,
+      .message-time,
+      .phone-caption {
+        color: #74817d;
+        font-size: 13px;
+      }
+
+      .inbox-heading {
+        margin-bottom: 18px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(24px, 5vw, 30px);
+        letter-spacing: -0.04em;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #51736a;
+        font-size: 13px;
+      }
+
+      .status::before {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #22a77d;
+        content: "";
+      }
+
+      .lookup {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 22px;
+      }
+
+      .phone-input {
+        min-width: 0;
+        flex: 1;
+        height: 52px;
+        padding: 0 16px;
+        border: 1px solid #dfe6e2;
+        border-radius: 13px;
+        outline: none;
+        background: #fff;
+        color: inherit;
+        font: inherit;
+        transition: border-color 150ms ease, box-shadow 150ms ease;
+      }
+
+      .phone-input:focus {
+        border-color: #16866c;
+        box-shadow: 0 0 0 3px rgb(22 134 108 / 13%);
+      }
+
+      button {
+        border: 0;
+        border-radius: 11px;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 650;
+      }
+
+      .submit-button {
+        min-width: 122px;
+        padding: 0 18px;
+        background: #087c62;
+        color: #fff;
+      }
+
+      .submit-button:hover {
+        background: #066a55;
+      }
+
+      .submit-button:disabled {
+        cursor: wait;
+        opacity: 0.7;
+      }
+
+      .message-card {
+        padding: 20px;
+        border: 1px solid #e6ebe8;
+        border-radius: 17px;
+        background: #fff;
+        box-shadow: 0 8px 26px rgb(24 48 40 / 4%);
+      }
+
+      .message-heading {
+        align-items: flex-start;
+        margin-bottom: 17px;
+      }
+
+      .sender {
+        margin: 0 0 4px;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .phone-caption {
+        margin: 0;
+      }
+
+      .code-row {
+        min-height: 78px;
+        padding: 12px 14px 12px 20px;
+        border-radius: 12px;
+        background: linear-gradient(110deg, #087962, #16947a);
+        color: #fff;
+      }
+
+      .otp-code {
+        display: flex;
+        flex-wrap: wrap;
+        gap: clamp(8px, 3vw, 17px);
+        font-size: clamp(24px, 7vw, 36px);
+        font-weight: 750;
+        letter-spacing: 0.04em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .copy-button {
+        flex: 0 0 auto;
+        padding: 9px 14px;
+        border: 1px solid rgb(255 255 255 / 40%);
+        background: rgb(255 255 255 / 10%);
+        color: #fff;
+      }
+
+      .copy-button:hover {
+        background: rgb(255 255 255 / 20%);
+      }
+
+      .message-text {
+        margin: 18px 2px 2px;
+        color: #55615d;
+        font-size: 14px;
+        line-height: 1.65;
+        overflow-wrap: anywhere;
+      }
+
+      .message-text strong {
+        color: #18745f;
+      }
+
+      .empty-state,
+      .error-state {
+        padding: 38px 20px;
+        border: 1px dashed #d9e2dd;
+        border-radius: 16px;
+        color: #71807a;
+        text-align: center;
+      }
+
+      .error-state {
+        border-color: #f0c9c4;
+        color: #a33d32;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      @media (max-width: 520px) {
+        body {
+          padding: 28px 16px;
+        }
+
+        .topbar {
+          margin-bottom: 28px;
+        }
+
+        .topbar-note {
+          display: none;
+        }
+
+        .lookup {
+          flex-direction: column;
+        }
+
+        .phone-input,
+        .submit-button {
+          width: 100%;
+          min-height: 50px;
+        }
+
+        .message-card {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="topbar">
+        <p class="brand"><span class="brand-mark" aria-hidden="true">✓</span>PlayIQService</p>
+        <span class="topbar-note">Private verification inbox</span>
+      </header>
+
+      <section aria-labelledby="inbox-title">
+        <div class="inbox-heading">
+          <h1 id="inbox-title">Get your OTP</h1>
+          <span class="status">Ready</span>
+        </div>
+
+        <form class="lookup" id="lookup-form">
+          <label class="sr-only" for="phone-number">Phone number</label>
+          <input
+            class="phone-input"
+            id="phone-number"
+            name="phoneNumber"
+            type="tel"
+            inputmode="tel"
+            autocomplete="tel"
+            placeholder="Enter mobile number"
+            required
+          >
+          <button class="submit-button" id="submit-button" type="submit">Get OTP</button>
+        </form>
+
+        <p class="empty-state" id="empty-state">Enter your phone number to find its latest verification code.</p>
+        <p class="error-state" id="error-state" role="alert" hidden></p>
+        <article class="message-card" id="message-card" aria-live="polite" hidden>
+          <div class="message-heading">
+            <div>
+              <p class="sender">Verification message</p>
+              <p class="phone-caption" id="card-phone"></p>
+            </div>
+            <time class="message-time" id="message-time"></time>
+          </div>
+          <div class="code-row">
+            <div class="otp-code" id="otp-code" aria-label="One-time passcode"></div>
+            <button class="copy-button" id="copy-button" type="button">Copy</button>
+          </div>
+          <p class="message-text" id="message-text"></p>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById('lookup-form');
+      const phoneInput = document.getElementById('phone-number');
+      const submitButton = document.getElementById('submit-button');
+      const emptyState = document.getElementById('empty-state');
+      const errorState = document.getElementById('error-state');
+      const messageCard = document.getElementById('message-card');
+      const cardPhone = document.getElementById('card-phone');
+      const messageTime = document.getElementById('message-time');
+      const otpCode = document.getElementById('otp-code');
+      const messageText = document.getElementById('message-text');
+      const copyButton = document.getElementById('copy-button');
+      let codeToCopy = '';
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const phoneNumber = phoneInput.value.trim();
+
+        if (!phoneNumber) {
+          return;
+        }
+
+        emptyState.hidden = true;
+        errorState.hidden = true;
+        messageCard.hidden = true;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Searching…';
+
+        try {
+          const query = new URLSearchParams({ phoneNumber });
+          const response = await fetch(`/messages?${query}`, {
+            headers: { Accept: 'application/json' },
+            cache: 'no-store',
+          });
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || 'Could not retrieve a message.');
+          }
+
+          if (
+            typeof result.latestMessage !== 'string' ||
+            typeof result.createdAt !== 'string'
+          ) {
+            throw new Error('The message service returned an unexpected response.');
+          }
+
+          const match = result.latestMessage.match(/\b\d{4,8}\b/);
+
+          if (!match) {
+            throw new Error('No 4–8 digit OTP was found in the latest message.');
+          }
+
+          codeToCopy = match[0];
+          cardPhone.textContent = phoneNumber;
+          messageTime.textContent = result.createdAt;
+          messageTime.dateTime = '';
+          messageText.textContent = result.latestMessage;
+          otpCode.replaceChildren(
+            ...Array.from(codeToCopy, (digit) => {
+              const span = document.createElement('span');
+              span.textContent = digit;
+              span.setAttribute('aria-hidden', 'true');
+              return span;
+            }),
+          );
+          copyButton.textContent = 'Copy';
+          messageCard.hidden = false;
+        } catch (error) {
+          errorState.textContent = error.message;
+          errorState.hidden = false;
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = 'Get OTP';
+        }
+      });
+
+      copyButton.addEventListener('click', async () => {
+        if (!codeToCopy) {
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(codeToCopy);
+          copyButton.textContent = 'Copied!';
+          window.setTimeout(() => {
+            copyButton.textContent = 'Copy';
+          }, 1600);
+        } catch {
+          errorState.textContent = 'Could not copy automatically. Select and copy the code.';
+          errorState.hidden = false;
+        }
+      });
+    </script>
+  </body>
+</html>
