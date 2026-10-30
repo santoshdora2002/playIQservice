@@ -318,6 +318,49 @@
       const copyButton = document.getElementById('copy-button');
       let codeToCopy = '';
 
+      function normalizePhoneNumber(phoneNumber) {
+        const digits = phoneNumber.replace(/\D/g, '');
+
+        return digits.length === 11 && digits.startsWith('1')
+          ? digits.slice(1)
+          : digits;
+      }
+
+      function parseMessageTimestamp(value) {
+        const directTimestamp = Date.parse(value);
+
+        if (Number.isFinite(directTimestamp)) {
+          return directTimestamp;
+        }
+
+        const match = value.match(
+          /^([A-Za-z]+) (\d{1,2}), (\d{4}) at (\d{1,2}):(\d{2}) (AM|PM) (EST|EDT)$/i,
+        );
+
+        if (!match) {
+          throw new Error('A message has an unrecognized timestamp format.');
+        }
+
+        const months = [
+          'january', 'february', 'march', 'april', 'may', 'june',
+          'july', 'august', 'september', 'october', 'november', 'december',
+        ];
+        const month = months.indexOf(match[1].toLowerCase());
+        const day = Number(match[2]);
+        const year = Number(match[3]);
+        const hour = Number(match[4]);
+        const minute = Number(match[5]);
+
+        if (month === -1 || day < 1 || hour < 1 || hour > 12 || minute > 59) {
+          throw new Error('A message has an invalid timestamp.');
+        }
+
+        const hour24 = (hour % 12) + (match[6].toUpperCase() === 'PM' ? 12 : 0);
+        const offsetHours = match[7].toUpperCase() === 'EDT' ? 4 : 5;
+
+        return Date.UTC(year, month, day, hour24, minute) + offsetHours * 60 * 60 * 1000;
+      }
+
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const phoneNumber = phoneInput.value.trim();
@@ -333,25 +376,50 @@
         submitButton.textContent = 'Searching…';
 
         try {
-          const query = new URLSearchParams({ phoneNumber });
-          const response = await fetch(`/messages?${query}`, {
+          const response = await fetch('/messages/', {
             headers: { Accept: 'application/json' },
             cache: 'no-store',
           });
           const result = await response.json();
 
           if (!response.ok) {
-            throw new Error(result.error || 'Could not retrieve a message.');
+            throw new Error(result.error || 'Could not retrieve messages.');
           }
 
-          if (
-            typeof result.latestMessage !== 'string' ||
-            typeof result.createdAt !== 'string'
-          ) {
+          if (!Array.isArray(result.messages)) {
             throw new Error('The message service returned an unexpected response.');
           }
 
-          const match = result.latestMessage.match(/\b\d{4,8}\b/);
+          const requestedNumber = normalizePhoneNumber(phoneNumber);
+          const matchingMessages = result.messages
+            .filter(
+              (message) =>
+                message &&
+                typeof message.phoneNumber === 'string' &&
+                normalizePhoneNumber(message.phoneNumber) === requestedNumber,
+            )
+            .map((message) => {
+              if (
+                typeof message.message !== 'string' ||
+                typeof message.createdAt !== 'string'
+              ) {
+                throw new Error('A message has an unexpected response format.');
+              }
+
+              return {
+                ...message,
+                timestamp: parseMessageTimestamp(message.createdAt),
+              };
+            });
+
+          if (matchingMessages.length === 0) {
+            throw new Error('No messages found for this phone number.');
+          }
+
+          const latestMessage = matchingMessages.reduce((latest, current) =>
+            current.timestamp > latest.timestamp ? current : latest,
+          );
+          const match = latestMessage.message.match(/\b\d{4,8}\b/);
 
           if (!match) {
             throw new Error('No 4–8 digit OTP was found in the latest message.');
@@ -359,9 +427,9 @@
 
           codeToCopy = match[0];
           cardPhone.textContent = phoneNumber;
-          messageTime.textContent = result.createdAt;
-          messageTime.dateTime = '';
-          messageText.textContent = result.latestMessage;
+          messageTime.textContent = latestMessage.createdAt;
+          messageTime.dateTime = new Date(latestMessage.timestamp).toISOString();
+          messageText.textContent = latestMessage.message;
           otpCode.replaceChildren(
             ...Array.from(codeToCopy, (digit) => {
               const span = document.createElement('span');

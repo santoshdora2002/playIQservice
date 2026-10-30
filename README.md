@@ -149,7 +149,7 @@ Example response (`200 OK`):
 
 ### `GET /getOTP`
 
-Serves an authenticated web page for looking up a phone number's latest message. The page calls `GET /messages?phoneNumber=...`, extracts the first 4–8 digit sequence from `latestMessage`, and provides a copy button. If no message or code is found, the page displays an error. It uses the same Basic Auth credentials as the API.
+Serves an authenticated web page for looking up a phone number's latest message. The page reads the `messages` array from `GET /messages/`, matches the phone number with or without a leading `+1`, selects the newest matching message, extracts the first 4–8 digit sequence, and provides a copy button. If no message or code is found, the page displays an error. It uses the same Basic Auth credentials as the API.
 
 Open `https://your-deployment.vercel.app/getOTP` in a browser, authenticate when prompted, enter the phone number, and choose **Get OTP**.
 
